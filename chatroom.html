@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>多人聊天室</title>
+    <title>OWS</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * {
@@ -13,131 +13,145 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
             height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
+            margin: 0;
+            padding: 0;
         }
 
         .container {
             background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             width: 100%;
-            max-width: 800px;
-            height: 90vh;
-            max-height: 700px;
+            max-width: 1200px;
+            height: 100vh;
+            margin: 0 auto;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            box-shadow: 0 0 1px rgba(0, 0, 0, 0.1);
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            text-align: center;
+            background: white;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
         .header h1 {
-            font-size: 24px;
-            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            color: #666;
         }
 
         .user-info {
             display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 10px;
-            font-size: 14px;
+            gap: 8px;
+            font-size: 13px;
+            color: #666;
         }
 
         .user-info input {
-            padding: 5px 10px;
-            border: none;
-            border-radius: 15px;
-            background: rgba(255, 255, 255, 0.2);
-            color: white;
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            background: white;
+            color: #333;
             outline: none;
+            font-size: 13px;
+        }
+
+        .user-info input:focus {
+            border-color: #4a90e2;
         }
 
         .user-info input::placeholder {
-            color: rgba(255, 255, 255, 0.7);
+            color: #999;
         }
 
         .user-info button {
-            padding: 5px 15px;
-            border: none;
-            border-radius: 15px;
-            background: rgba(255, 255, 255, 0.3);
-            color: white;
+            padding: 4px 12px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            background: white;
+            color: #666;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: all 0.2s;
+            font-size: 13px;
         }
 
         .user-info button:hover {
-            background: rgba(255, 255, 255, 0.4);
+            background: #f5f5f5;
+            border-color: #bbb;
         }
 
         .online-count {
-            margin-top: 5px;
             font-size: 12px;
-            opacity: 0.9;
+            color: #999;
         }
 
         .messages-container {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
-            background: #f5f5f5;
+            padding: 0;
+            background: white;
         }
 
         .message {
-            margin-bottom: 15px;
-            animation: slideIn 0.3s ease-out;
+            padding: 12px 24px;
+            border-bottom: 1px solid #f0f0f0;
             display: flex;
-            flex-direction: column;
             align-items: flex-start;
+            gap: 12px;
+            transition: background 0.1s;
         }
 
-        /* 自己发送的消息右对齐 */
+        .message:hover {
+            background: #fafafa;
+        }
+
+        /* 自己发送的消息稍微不同的背景色 */
         .message.own {
-            align-items: flex-end;
+            background: #f9f9fb;
         }
 
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .message.own:hover {
+            background: #f5f5f7;
         }
 
         .message-header {
+            min-width: 140px;
             display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 5px;
-        }
-
-        /* 自己的消息头部右对齐，并反转顺序 */
-        .message.own .message-header {
-            flex-direction: row-reverse;
+            flex-direction: column;
+            gap: 4px;
         }
 
         .nickname {
-            font-weight: bold;
-            color: #667eea;
+            font-weight: 500;
+            color: #333;
+            font-size: 13px;
         }
 
         .message.own .nickname {
-            color: #764ba2;
+            color: #4a90e2;
         }
 
         .timestamp {
@@ -146,121 +160,115 @@
         }
 
         .message-content {
-            background: white;
-            padding: 10px 15px;
-            border-radius: 15px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            flex: 1;
+            color: #333;
+            line-height: 1.6;
             word-wrap: break-word;
-            max-width: 80%;
-            display: inline-block;
+            font-size: 14px;
         }
 
         .message.own .message-content {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 15px 15px 0 15px;
-        }
-
-        /* 其他人的消息气泡左下角圆角改小 */
-        .message:not(.own) .message-content {
-            border-radius: 15px 15px 15px 0;
+            color: #333;
         }
 
         .input-container {
-            padding: 20px;
+            padding: 16px 24px;
             background: white;
             border-top: 1px solid #e0e0e0;
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
 
         .input-container input {
             flex: 1;
-            padding: 12px 20px;
-            border: 2px solid #e0e0e0;
-            border-radius: 25px;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
             outline: none;
             font-size: 14px;
-            transition: border-color 0.3s;
+            transition: border-color 0.2s;
         }
 
         .input-container input:focus {
-            border-color: #667eea;
+            border-color: #4a90e2;
         }
 
         .input-container button {
-            padding: 12px 30px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 25px;
+            padding: 8px 16px;
+            background: white;
+            color: #666;
+            border: 1px solid #ddd;
+            border-radius: 3px;
             cursor: pointer;
-            font-weight: bold;
-            transition: transform 0.2s, box-shadow 0.2s;
+            font-size: 14px;
+            transition: all 0.2s;
         }
 
         .input-container button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            background: #f5f5f5;
+            border-color: #bbb;
         }
 
         .input-container button:active {
-            transform: translateY(0);
+            background: #ebebeb;
+        }
+
+        .input-container button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
         .loading {
             text-align: center;
-            padding: 20px;
+            padding: 24px;
             color: #999;
+            font-size: 13px;
         }
 
         /* 滚动条样式 */
         .messages-container::-webkit-scrollbar {
-            width: 8px;
+            width: 6px;
         }
 
         .messages-container::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: transparent;
         }
 
         .messages-container::-webkit-scrollbar-thumb {
-            background: #667eea;
-            border-radius: 4px;
+            background: #ddd;
+            border-radius: 3px;
         }
 
         .messages-container::-webkit-scrollbar-thumb:hover {
-            background: #764ba2;
+            background: #bbb;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌟 多人聊天室</h1>
-            <div class="user-info">
-                <span>昵称：</span>
-                <input type="text" id="nicknameInput" placeholder="输入昵称..." maxlength="20">
-                <button id="setNicknameBtn">设置</button>
-                <button id="clearNicknameBtn">清除</button>
+            <div class="header-left">
+                <h1>协作文档</h1>
+                <div class="user-info">
+                    <input type="text" id="nicknameInput" placeholder="用户名" maxlength="20">
+                    <button id="setNicknameBtn">确定</button>
+                    <button id="clearNicknameBtn">重置</button>
+                </div>
             </div>
-            <div class="user-info">
-                <span id="currentNickname">当前显示: 加载中...</span>
-            </div>
-            <div class="user-info">
-                <span id="ipInfo" style="font-size: 11px; opacity: 0.8;">IP 信息加载中...</span>
-            </div>
-            <div class="online-count">
-                <span id="onlineCount">在线用户加载中...</span>
+            <div class="header-right">
+                <span id="currentNickname">加载中...</span>
+                <span>|</span>
+                <span id="onlineCount" class="online-count">-</span>
             </div>
         </div>
         
         <div class="messages-container" id="messagesContainer">
-            <div class="loading">正在加载聊天记录...</div>
+            <div class="loading">加载记录中...</div>
         </div>
         
         <div class="input-container">
-            <input type="text" id="messageInput" placeholder="输入消息..." maxlength="500">
-            <button id="sendBtn">发送</button>
+            <input type="text" id="messageInput" placeholder="添加备注..." maxlength="500">
+            <button id="sendBtn">提交</button>
         </div>
     </div>
 
@@ -273,8 +281,6 @@
         
         // 全局变量
         let userIp = '';
-        let localIp = '';
-        let publicIp = '';
         let currentNickname = '';
         let hasCustomNickname = false; // 是否设置了自定义昵称
         let messageSubscription = null;
@@ -287,7 +293,6 @@
         const setNicknameBtn = document.getElementById('setNicknameBtn');
         const clearNicknameBtn = document.getElementById('clearNicknameBtn');
         const currentNicknameSpan = document.getElementById('currentNickname');
-        const ipInfoSpan = document.getElementById('ipInfo');
         const onlineCountSpan = document.getElementById('onlineCount');
 
         // 隐藏 IP 地址的后几位，保护隐私
@@ -334,67 +339,8 @@
             return maskedIp;
         }
 
-        // 判断是否为私有 IP 地址
-        function isPrivateIp(ip) {
-            if (!ip) return false;
-            
-            const parts = ip.split('.').map(Number);
-            if (parts.length !== 4) return false;
-            
-            // 10.0.0.0 - 10.255.255.255
-            if (parts[0] === 10) return true;
-            
-            // 172.16.0.0 - 172.31.255.255
-            if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
-            
-            // 192.168.0.0 - 192.168.255.255
-            if (parts[0] === 192 && parts[1] === 168) return true;
-            
-            return false;
-        }
-
-        // 使用 WebRTC 获取本地 IP 地址
-        async function getLocalIp() {
-            return new Promise((resolve) => {
-                const pc = new RTCPeerConnection({
-                    iceServers: []
-                });
-                
-                pc.createDataChannel('');
-                pc.createOffer().then(offer => pc.setLocalDescription(offer));
-                
-                pc.onicecandidate = (ice) => {
-                    if (!ice || !ice.candidate || !ice.candidate.candidate) {
-                        pc.close();
-                        return;
-                    }
-                    
-                    const candidate = ice.candidate.candidate;
-                    const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3})/;
-                    const match = ipRegex.exec(candidate);
-                    
-                    if (match) {
-                        const ip = match[1];
-                        // 排除一些特殊的 IP
-                        if (ip !== '0.0.0.0' && !ip.startsWith('127.')) {
-                            localIp = ip;
-                            console.log('本地 IP:', localIp);
-                            resolve(ip);
-                            pc.close();
-                        }
-                    }
-                };
-                
-                // 2秒后超时
-                setTimeout(() => {
-                    pc.close();
-                    resolve('');
-                }, 2000);
-            });
-        }
-
-        // 获取用户公网 IP 地址
-        async function getPublicIp() {
+        // 获取用户 IP 地址
+        async function getUserIp() {
             try {
                 // 使用多个备选 API 以提高可靠性
                 const apis = [
@@ -407,74 +353,24 @@
                     try {
                         const response = await fetch(api);
                         const data = await response.json();
-                        const ip = data.ip || data.IP || data.ipAddress;
-                        if (ip) {
-                            publicIp = ip;
-                            console.log('公网 IP:', publicIp);
-                            return ip;
-                        }
+                        userIp = data.ip || data.IP || data.ipAddress;
+                        if (userIp) break;
                     } catch (e) {
                         continue;
                     }
                 }
-                return '';
-            } catch (error) {
-                console.error('获取公网 IP 失败:', error);
-                return '';
-            }
-        }
-
-        // 获取用户 IP 地址（同时获取本地和公网 IP）
-        async function getUserIp() {
-            try {
-                // 同时获取本地 IP 和公网 IP
-                await Promise.all([
-                    getLocalIp(),
-                    getPublicIp()
-                ]);
                 
-                // 智能选择使用哪个 IP 作为用户标识
-                // 优先使用本地内网 IP（10.x.x.x, 172.16-31.x.x, 192.168.x.x）
-                if (localIp && isPrivateIp(localIp)) {
-                    // 如果检测到内网 IP，优先使用
-                    userIp = localIp;
-                    console.log('检测到内网环境，使用本地 IP:', userIp);
-                } else if (publicIp) {
-                    // 否则使用公网 IP
-                    userIp = publicIp;
-                    console.log('使用公网 IP:', userIp);
-                } else if (localIp) {
-                    // 如果只有本地 IP（即使不是标准内网）
-                    userIp = localIp;
-                } else {
-                    // 如果都失败，生成一个随机 ID
+                // 如果所有 API 都失败，生成一个随机 ID
+                if (!userIp) {
                     userIp = 'user_' + Math.random().toString(36).substr(2, 9);
                 }
                 
-                console.log('使用 IP:', userIp);
-                updateIpInfo();
+                console.log('用户 IP:', userIp);
                 await loadUserNickname();
             } catch (error) {
                 console.error('获取 IP 失败:', error);
                 userIp = 'user_' + Math.random().toString(36).substr(2, 9);
-                updateIpInfo();
                 await loadUserNickname();
-            }
-        }
-
-        // 更新 IP 信息显示
-        function updateIpInfo() {
-            const parts = [];
-            if (localIp) {
-                parts.push(`本地: ${localIp}`);
-            }
-            if (publicIp) {
-                parts.push(`公网: ${maskIp(publicIp)}`);
-            }
-            if (parts.length > 0) {
-                ipInfoSpan.textContent = parts.join(' | ');
-            } else {
-                ipInfoSpan.textContent = `使用ID: ${userIp}`;
             }
         }
 
@@ -510,14 +406,14 @@
         // 更新昵称显示
         function updateNicknameDisplay() {
             const displayName = getDisplayName(currentNickname, userIp, hasCustomNickname);
-            currentNicknameSpan.textContent = `当前显示: ${displayName}`;
+            currentNicknameSpan.textContent = `${displayName}`;
         }
 
         // 设置昵称
         async function setNickname() {
             const nickname = nicknameInput.value.trim();
             if (!nickname) {
-                alert('请输入昵称');
+                alert('请输入用户名');
                 return;
             }
 
@@ -538,16 +434,15 @@
                 currentNickname = nickname;
                 hasCustomNickname = true;
                 updateNicknameDisplay();
-                alert('昵称设置成功！');
             } catch (error) {
                 console.error('设置昵称失败:', error);
-                alert('设置昵称失败，请重试');
+                alert('操作失败，请重试');
             }
         }
 
         // 清除昵称
         async function clearNickname() {
-            if (!confirm('确定要清除昵称吗？之后将显示为 IP 地址。')) {
+            if (!confirm('确定要重置用户名吗？')) {
                 return;
             }
 
@@ -569,10 +464,9 @@
                 hasCustomNickname = false;
                 nicknameInput.value = '';
                 updateNicknameDisplay();
-                alert('昵称已清除！');
             } catch (error) {
                 console.error('清除昵称失败:', error);
-                alert('清除昵称失败，请重试');
+                alert('操作失败，请重试');
             }
         }
 
@@ -591,12 +485,12 @@
                 if (data && data.length > 0) {
                     data.forEach(msg => displayMessage(msg));
                 } else {
-                    messagesContainer.innerHTML = '<div class="loading">暂无消息，开始聊天吧！</div>';
+                    messagesContainer.innerHTML = '<div class="loading">暂无记录</div>';
                 }
                 scrollToBottom();
             } catch (error) {
                 console.error('加载消息失败:', error);
-                messagesContainer.innerHTML = '<div class="loading">加载消息失败</div>';
+                messagesContainer.innerHTML = '<div class="loading">加载失败</div>';
             }
         }
 
@@ -685,7 +579,7 @@
                 }
             } catch (error) {
                 console.error('发送消息失败:', error);
-                alert('发送消息失败: ' + (error.message || '未知错误'));
+                alert('提交失败: ' + (error.message || '未知错误'));
                 // 恢复输入框的值
                 messageInput.value = message;
             } finally {
@@ -746,7 +640,7 @@
                     .select('id', { count: 'exact' });
 
                 if (!error) {
-                    onlineCountSpan.textContent = `已注册用户: ${data.length} 人`;
+                    onlineCountSpan.textContent = `${data.length} 位协作者`;
                 }
             } catch (error) {
                 console.error('获取用户数失败:', error);
