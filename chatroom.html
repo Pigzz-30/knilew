@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>多人聊天室</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 800px;
+            height: 90vh;
+            max-height: 700px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .user-info input {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            outline: none;
+        }
+
+        .user-info input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .user-info button {
+            padding: 5px 15px;
+            border: none;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .user-info button:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .online-count {
+            margin-top: 5px;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            animation: slideIn 0.3s ease-out;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        /* 自己发送的消息右对齐 */
+        .message.own {
+            align-items: flex-end;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+        }
+
+        /* 自己的消息头部右对齐，并反转顺序 */
+        .message.own .message-header {
+            flex-direction: row-reverse;
+        }
+
+        .nickname {
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .message.own .nickname {
+            color: #764ba2;
+        }
+
+        .timestamp {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .message-content {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 15px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            word-wrap: break-word;
+            max-width: 80%;
+            display: inline-block;
+        }
+
+        .message.own .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px 15px 0 15px;
+        }
+
+        /* 其他人的消息气泡左下角圆角改小 */
+        .message:not(.own) .message-content {
+            border-radius: 15px 15px 15px 0;
+        }
+
+        .input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-container input {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            outline: none;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        .input-container input:focus {
+            border-color: #667eea;
+        }
+
+        .input-container button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .input-container button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .input-container button:active {
+            transform: translateY(0);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+        }
+
+        /* 滚动条样式 */
+        .messages-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌟 多人聊天室</h1>
+            <div class="user-info">
+                <span>昵称：</span>
+                <input type="text" id="nicknameInput" placeholder="输入昵称..." maxlength="20">
+                <button id="setNicknameBtn">设置</button>
+                <button id="clearNicknameBtn">清除</button>
+            </div>
+            <div class="user-info">
+                <span id="currentNickname">当前显示: 加载中...</span>
+            </div>
+            <div class="user-info">
+                <span id="ipInfo" style="font-size: 11px; opacity: 0.8;">IP 信息加载中...</span>
+            </div>
+            <div class="online-count">
+                <span id="onlineCount">在线用户加载中...</span>
+            </div>
+        </div>
+        
+        <div class="messages-container" id="messagesContainer">
+            <div class="loading">正在加载聊天记录...</div>
+        </div>
+        
+        <div class="input-container">
+            <input type="text" id="messageInput" placeholder="输入消息..." maxlength="500">
+            <button id="sendBtn">发送</button>
+        </div>
+    </div>
+
+    <script>
+        // Supabase 配置
+        const SUPABASE_URL = 'https://wlwlzsjrfnbfcufrlvhv.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indsd2x6c2pyZm5iZmN1ZnJsdmh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyMDM2NzksImV4cCI6MjA3Njc3OTY3OX0.K89Y5fF4nUudtM3ozXe_29KLLCWcY4EoCkZqMCa2EEY';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // 全局变量
+        let userIp = '';
+        let localIp = '';
+        let publicIp = '';
+        let currentNickname = '';
+        let hasCustomNickname = false; // 是否设置了自定义昵称
+        let messageSubscription = null;
+
+        // DOM 元素
+        const messagesContainer = document.getElementById('messagesContainer');
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const nicknameInput = document.getElementById('nicknameInput');
+        const setNicknameBtn = document.getElementById('setNicknameBtn');
+        const clearNicknameBtn = document.getElementById('clearNicknameBtn');
+        const currentNicknameSpan = document.getElementById('currentNickname');
+        const ipInfoSpan = document.getElementById('ipInfo');
+        const onlineCountSpan = document.getElementById('onlineCount');
+
+        // 隐藏 IP 地址的后几位，保护隐私
+        function maskIp(ip) {
+            if (!ip) return '未知';
+            
+            // 如果是 IPv4 地址（例如：192.168.1.100）
+            if (ip.includes('.')) {
+                const parts = ip.split('.');
+                if (parts.length === 4) {
+                    // 隐藏最后一段
+                    return `${parts[0]}.${parts[1]}.${parts[2]}.***`;
+                }
+            }
+            
+            // 如果是 IPv6 地址或其他格式
+            if (ip.includes(':')) {
+                const parts = ip.split(':');
+                if (parts.length > 2) {
+                    // 只显示前两段
+                    return `${parts[0]}:${parts[1]}:****`;
+                }
+            }
+            
+            // 如果是自定义用户 ID
+            if (ip.startsWith('user_')) {
+                return ip.substring(0, 10) + '***';
+            }
+            
+            // 其他情况，隐藏后面的字符
+            if (ip.length > 10) {
+                return ip.substring(0, 10) + '***';
+            }
+            
+            return ip;
+        }
+
+        // 获取显示名称（昵称(IP) 或 IP）
+        function getDisplayName(nickname, ip, isCustom) {
+            const maskedIp = maskIp(ip);
+            if (isCustom && nickname) {
+                return `${nickname}(${maskedIp})`;
+            }
+            return maskedIp;
+        }
+
+        // 判断是否为私有 IP 地址
+        function isPrivateIp(ip) {
+            if (!ip) return false;
+            
+            const parts = ip.split('.').map(Number);
+            if (parts.length !== 4) return false;
+            
+            // 10.0.0.0 - 10.255.255.255
+            if (parts[0] === 10) return true;
+            
+            // 172.16.0.0 - 172.31.255.255
+            if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+            
+            // 192.168.0.0 - 192.168.255.255
+            if (parts[0] === 192 && parts[1] === 168) return true;
+            
+            return false;
+        }
+
+        // 使用 WebRTC 获取本地 IP 地址
+        async function getLocalIp() {
+            return new Promise((resolve) => {
+                const pc = new RTCPeerConnection({
+                    iceServers: []
+                });
+                
+                pc.createDataChannel('');
+                pc.createOffer().then(offer => pc.setLocalDescription(offer));
+                
+                pc.onicecandidate = (ice) => {
+                    if (!ice || !ice.candidate || !ice.candidate.candidate) {
+                        pc.close();
+                        return;
+                    }
+                    
+                    const candidate = ice.candidate.candidate;
+                    const ipRegex = /([0-9]{1,3}(\.[0-9]{1,3}){3})/;
+                    const match = ipRegex.exec(candidate);
+                    
+                    if (match) {
+                        const ip = match[1];
+                        // 排除一些特殊的 IP
+                        if (ip !== '0.0.0.0' && !ip.startsWith('127.')) {
+                            localIp = ip;
+                            console.log('本地 IP:', localIp);
+                            resolve(ip);
+                            pc.close();
+                        }
+                    }
+                };
+                
+                // 2秒后超时
+                setTimeout(() => {
+                    pc.close();
+                    resolve('');
+                }, 2000);
+            });
+        }
+
+        // 获取用户公网 IP 地址
+        async function getPublicIp() {
+            try {
+                // 使用多个备选 API 以提高可靠性
+                const apis = [
+                    'https://api.ipify.org?format=json',
+                    'https://api.myip.com',
+                    'https://ipapi.co/json/'
+                ];
+                
+                for (const api of apis) {
+                    try {
+                        const response = await fetch(api);
+                        const data = await response.json();
+                        const ip = data.ip || data.IP || data.ipAddress;
+                        if (ip) {
+                            publicIp = ip;
+                            console.log('公网 IP:', publicIp);
+                            return ip;
+                        }
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                return '';
+            } catch (error) {
+                console.error('获取公网 IP 失败:', error);
+                return '';
+            }
+        }
+
+        // 获取用户 IP 地址（同时获取本地和公网 IP）
+        async function getUserIp() {
+            try {
+                // 同时获取本地 IP 和公网 IP
+                await Promise.all([
+                    getLocalIp(),
+                    getPublicIp()
+                ]);
+                
+                // 智能选择使用哪个 IP 作为用户标识
+                // 优先使用本地内网 IP（10.x.x.x, 172.16-31.x.x, 192.168.x.x）
+                if (localIp && isPrivateIp(localIp)) {
+                    // 如果检测到内网 IP，优先使用
+                    userIp = localIp;
+                    console.log('检测到内网环境，使用本地 IP:', userIp);
+                } else if (publicIp) {
+                    // 否则使用公网 IP
+                    userIp = publicIp;
+                    console.log('使用公网 IP:', userIp);
+                } else if (localIp) {
+                    // 如果只有本地 IP（即使不是标准内网）
+                    userIp = localIp;
+                } else {
+                    // 如果都失败，生成一个随机 ID
+                    userIp = 'user_' + Math.random().toString(36).substr(2, 9);
+                }
+                
+                console.log('使用 IP:', userIp);
+                updateIpInfo();
+                await loadUserNickname();
+            } catch (error) {
+                console.error('获取 IP 失败:', error);
+                userIp = 'user_' + Math.random().toString(36).substr(2, 9);
+                updateIpInfo();
+                await loadUserNickname();
+            }
+        }
+
+        // 更新 IP 信息显示
+        function updateIpInfo() {
+            const parts = [];
+            if (localIp) {
+                parts.push(`本地: ${localIp}`);
+            }
+            if (publicIp) {
+                parts.push(`公网: ${maskIp(publicIp)}`);
+            }
+            if (parts.length > 0) {
+                ipInfoSpan.textContent = parts.join(' | ');
+            } else {
+                ipInfoSpan.textContent = `使用ID: ${userIp}`;
+            }
+        }
+
+        // 加载用户昵称
+        async function loadUserNickname() {
+            try {
+                const { data, error } = await supabase
+                    .from('chat_users')
+                    .select('nickname, has_custom_nickname')
+                    .eq('ip_address', userIp);
+                
+                if (!error && data && data.length > 0 && data[0].has_custom_nickname) {
+                    currentNickname = data[0].nickname;
+                    hasCustomNickname = true;
+                    nicknameInput.value = currentNickname;
+                } else {
+                    // 使用空字符串作为默认（显示时会使用隐藏的 IP）
+                    currentNickname = '';
+                    hasCustomNickname = false;
+                    console.log('用户首次访问，使用默认昵称');
+                }
+                
+                // 更新显示
+                updateNicknameDisplay();
+            } catch (error) {
+                console.log('加载昵称失败:', error);
+                currentNickname = '';
+                hasCustomNickname = false;
+                updateNicknameDisplay();
+            }
+        }
+
+        // 更新昵称显示
+        function updateNicknameDisplay() {
+            const displayName = getDisplayName(currentNickname, userIp, hasCustomNickname);
+            currentNicknameSpan.textContent = `当前显示: ${displayName}`;
+        }
+
+        // 设置昵称
+        async function setNickname() {
+            const nickname = nicknameInput.value.trim();
+            if (!nickname) {
+                alert('请输入昵称');
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('chat_users')
+                    .upsert({
+                        ip_address: userIp,
+                        nickname: nickname,
+                        has_custom_nickname: true,
+                        updated_at: new Date().toISOString()
+                    }, {
+                        onConflict: 'ip_address'
+                    });
+
+                if (error) throw error;
+
+                currentNickname = nickname;
+                hasCustomNickname = true;
+                updateNicknameDisplay();
+                alert('昵称设置成功！');
+            } catch (error) {
+                console.error('设置昵称失败:', error);
+                alert('设置昵称失败，请重试');
+            }
+        }
+
+        // 清除昵称
+        async function clearNickname() {
+            if (!confirm('确定要清除昵称吗？之后将显示为 IP 地址。')) {
+                return;
+            }
+
+            try {
+                const { error } = await supabase
+                    .from('chat_users')
+                    .upsert({
+                        ip_address: userIp,
+                        nickname: '',
+                        has_custom_nickname: false,
+                        updated_at: new Date().toISOString()
+                    }, {
+                        onConflict: 'ip_address'
+                    });
+
+                if (error) throw error;
+
+                currentNickname = '';
+                hasCustomNickname = false;
+                nicknameInput.value = '';
+                updateNicknameDisplay();
+                alert('昵称已清除！');
+            } catch (error) {
+                console.error('清除昵称失败:', error);
+                alert('清除昵称失败，请重试');
+            }
+        }
+
+        // 加载历史消息
+        async function loadMessages() {
+            try {
+                const { data, error } = await supabase
+                    .from('chat_messages')
+                    .select('*')
+                    .order('created_at', { ascending: true })
+                    .limit(100);
+
+                if (error) throw error;
+
+                messagesContainer.innerHTML = '';
+                if (data && data.length > 0) {
+                    data.forEach(msg => displayMessage(msg));
+                } else {
+                    messagesContainer.innerHTML = '<div class="loading">暂无消息，开始聊天吧！</div>';
+                }
+                scrollToBottom();
+            } catch (error) {
+                console.error('加载消息失败:', error);
+                messagesContainer.innerHTML = '<div class="loading">加载消息失败</div>';
+            }
+        }
+
+        // 显示消息
+        function displayMessage(msg) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message' + (msg.user_ip === userIp ? ' own' : '');
+            messageDiv.dataset.messageId = msg.id; // 添加消息 ID 用于去重
+            
+            const time = new Date(msg.created_at).toLocaleTimeString('zh-CN', {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            // 根据是否有自定义昵称来显示不同格式
+            const displayName = getDisplayName(
+                msg.nickname, 
+                msg.user_ip, 
+                msg.has_custom_nickname || false
+            );
+
+            messageDiv.innerHTML = `
+                <div class="message-header">
+                    <span class="nickname">${escapeHtml(displayName)}</span>
+                    <span class="timestamp">${time}</span>
+                </div>
+                <div class="message-content">${escapeHtml(msg.message)}</div>
+            `;
+
+            messagesContainer.appendChild(messageDiv);
+        }
+
+        // HTML 转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 发送消息
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // 禁用发送按钮，防止重复发送
+            sendBtn.disabled = true;
+            messageInput.disabled = true;
+
+            try {
+                const newMessage = {
+                    user_ip: userIp,
+                    nickname: currentNickname,
+                    has_custom_nickname: hasCustomNickname,
+                    message: message,
+                    created_at: new Date().toISOString()
+                };
+
+                const { data, error } = await supabase
+                    .from('chat_messages')
+                    .insert(newMessage)
+                    .select();
+
+                if (error) {
+                    console.error('发送消息错误详情:', error);
+                    throw error;
+                }
+
+                console.log('消息发送成功:', data);
+                messageInput.value = '';
+                
+                // 如果返回了数据，立即显示（防止 Realtime 延迟）
+                if (data && data.length > 0) {
+                    // 移除加载提示
+                    if (messagesContainer.querySelector('.loading')) {
+                        messagesContainer.innerHTML = '';
+                    }
+                    
+                    // 检查消息是否已经显示（通过 ID 去重）
+                    const messageId = data[0].id;
+                    const existingMessage = messagesContainer.querySelector(`[data-message-id="${messageId}"]`);
+                    
+                    if (!existingMessage) {
+                        displayMessage(data[0]);
+                        scrollToBottom();
+                    }
+                }
+            } catch (error) {
+                console.error('发送消息失败:', error);
+                alert('发送消息失败: ' + (error.message || '未知错误'));
+                // 恢复输入框的值
+                messageInput.value = message;
+            } finally {
+                // 恢复按钮状态
+                sendBtn.disabled = false;
+                messageInput.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        // 滚动到底部
+        function scrollToBottom() {
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // 订阅实时消息
+        function subscribeToMessages() {
+            messageSubscription = supabase
+                .channel('chat_messages_channel')
+                .on('postgres_changes', {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'chat_messages'
+                }, payload => {
+                    console.log('收到新消息:', payload.new);
+                    
+                    // 移除加载提示
+                    if (messagesContainer.querySelector('.loading')) {
+                        messagesContainer.innerHTML = '';
+                    }
+                    
+                    // 检查是否已经显示过这条消息（避免重复）
+                    const messageId = payload.new.id;
+                    const existingMessages = messagesContainer.querySelectorAll('.message');
+                    let isDuplicate = false;
+                    
+                    existingMessages.forEach(msg => {
+                        if (msg.dataset.messageId === messageId) {
+                            isDuplicate = true;
+                        }
+                    });
+                    
+                    if (!isDuplicate) {
+                        displayMessage(payload.new);
+                        scrollToBottom();
+                    }
+                })
+                .subscribe((status) => {
+                    console.log('Realtime 订阅状态:', status);
+                });
+        }
+
+        // 更新在线用户数
+        async function updateOnlineCount() {
+            try {
+                const { data, error } = await supabase
+                    .from('chat_users')
+                    .select('id', { count: 'exact' });
+
+                if (!error) {
+                    onlineCountSpan.textContent = `已注册用户: ${data.length} 人`;
+                }
+            } catch (error) {
+                console.error('获取用户数失败:', error);
+            }
+        }
+
+        // 事件监听
+        setNicknameBtn.addEventListener('click', setNickname);
+        clearNicknameBtn.addEventListener('click', clearNickname);
+        
+        nicknameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') setNickname();
+        });
+
+        sendBtn.addEventListener('click', sendMessage);
+        
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // 初始化
+        async function init() {
+            await getUserIp();
+            await loadMessages();
+            subscribeToMessages();
+            await updateOnlineCount();
+            
+            // 每30秒更新一次在线用户数
+            setInterval(updateOnlineCount, 30000);
+        }
+
+        // 页面加载完成后初始化
+        init();
+    </script>
+</body>
+</html>
